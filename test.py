@@ -2,9 +2,9 @@ import pandas as pd
 import sklearn
 import ast
 import scipy
+import keras
 
-df = pd.read_parquet("hf://datasets/batuhanmtl/job-skill-set/data/train-00000-of-00001.parquet")
-df.to_csv('job-skills.csv')
+df = pd.read_csv("job-skills.csv")
 
 
 job_description_encoder = sklearn.feature_extraction.text.TfidfVectorizer()
@@ -27,4 +27,6 @@ x_train, x_test, y_train, y_test = sklearn.model_selection.train_test_split(x, y
 print(f"=====x_train here:========== \n{x_train[0]}")
 print(f"=====y_train here:========== \n{y_train[0]}")
 print(x)
+
+
 
