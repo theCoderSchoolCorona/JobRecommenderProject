@@ -2,6 +2,7 @@ import pandas as pd
 import sklearn
 import ast
 import scipy
+import keras
 
 df = pd.read_csv("job-skills.csv")
 df2 = pd.read_csv("kaggle_merged_clean.csv")
@@ -34,11 +35,11 @@ x = scipy.sparse.hstack([jobDescription, jobSkillset, jobCategory, jobTitle, job
 
 # Save the encoders
 encoders = {
-    'description': ???,
-    'skills': ???,
-    'category': ???,
-    'title' : ???,
-    'summary': ???,
+    'description': job_description_encoder,
+    'skills': job_skill_set_encoder,
+    'category': job_category_encoder,
+    'title' : job_title_encoder,
+    'summary': job_summary_encoder,
     
 }
 
@@ -164,7 +165,7 @@ def train_autoencoder(X, epochs=100, batch_size=32, validation_split=0.2):
     autoencoder, encoder = build_autoencoder(X_dense.shape[1])
     
     print("\n[2.2] Compiling model...")
-    autoencoder.???(
+    autoencoder.compile(
         optimizer=keras.optimizers.Adam(learning_rate=0.001),
         loss='mse',  # Mean Squared Error: penalizes reconstruction errors
         metrics=['mae']  # Mean Absolute Error: easier to interpret
@@ -189,13 +190,17 @@ def train_autoencoder(X, epochs=100, batch_size=32, validation_split=0.2):
         )
     ]
     
-    history = autoencoder.???(
-        ???, ???,  # Input and target are the same!
-        ???=???,
-        batch_size=???,
-        validation_split=???,
+    history = autoencoder.fit(
+        X_dense, X_dense,  # Input and target are the same!
+        epochs=epochs,
+        batch_size=batch_size,
+        validation_split=validation_split,
         callbacks=callbacks,
         verbose=1
     )
 
     return autoencoder, encoder, history
+
+
+
+train_autoencoder(x,epochs=100,batch_size=32,validation_split=0.2)
