@@ -3,22 +3,23 @@ import sklearn
 import ast
 import scipy
 import keras
+from rapidfuzz import process, fuzz
 
-df1 = pd.read_csv("job-skills.csv")
-df2 = pd.read_csv("kaggle_merged_clean.csv")
+df = pd.read_csv("job-skills.csv")
+# df2 = pd.read_csv("kaggle_merged_clean.csv")
 
-df_x = pd.concat([df1, df2], ignore_index=True)
-df_x["job_skill_set"] = df_x['job_skill_set'].fillna("[""]")
-df=df_x.fillna("")
+# df_x = pd.concat([df1, df2], ignore_index=True)
+# df_x["job_skill_set"] = df_x['job_skill_set'].fillna("[""]")
+# df=df_x.fillna("")
 
 job_description_encoder = sklearn.feature_extraction.text.TfidfVectorizer()
 jobDescription = job_description_encoder.fit_transform(df['job_description'])
 
-job_summary_encoder = sklearn.feature_extraction.text.TfidfVectorizer()
-jobSummary = job_summary_encoder.fit_transform(df['summary'])
+# job_summary_encoder = sklearn.feature_extraction.text.TfidfVectorizer()
+# jobSummary = job_summary_encoder.fit_transform(df['summary'])
 
 job_title_encoder = sklearn.feature_extraction.text.TfidfVectorizer()
-jobTitle = job_title_encoder.fit_transform(df['title'])
+jobTitle = job_title_encoder.fit_transform(df['job_title'])
 
 job_skill_set_encoder = sklearn.preprocessing.MultiLabelBinarizer()
 jobSkillset = job_skill_set_encoder.fit_transform(df['job_skill_set'].apply(ast.literal_eval))
@@ -26,7 +27,7 @@ jobSkillset = job_skill_set_encoder.fit_transform(df['job_skill_set'].apply(ast.
 job_category_encoder = sklearn.preprocessing.OneHotEncoder(sparse_output=False)
 jobCategory = job_category_encoder.fit_transform(df[['category']])
 
-x = scipy.sparse.hstack([jobDescription, jobSkillset, jobCategory, jobTitle, jobSummary])
+x = scipy.sparse.hstack([jobDescription, jobSkillset, jobCategory, jobTitle])
 
 # Save the encoders
 encoders = {
@@ -34,7 +35,6 @@ encoders = {
     'skills': job_skill_set_encoder,
     'category': job_category_encoder,
     'title' : job_title_encoder,
-    'summary': job_summary_encoder,
     
 }
 
@@ -130,7 +130,7 @@ def build_autoencoder(input_dim, embedding_dim=128):
     return autoencoder, encoder
 
 
-def train_autoencoder(X, epochs=100, batch_size=32, validation_split=0.2):
+def train_autoencoder(X, epochs=50, batch_size=32, validation_split=0.2):
     """
     Train the autoencoder on the feature matrix.
     
@@ -190,4 +190,153 @@ def train_autoencoder(X, epochs=100, batch_size=32, validation_split=0.2):
 
     return autoencoder, encoder, history
 
-train_autoencoder(x,epochs=100,batch_size=32,validation_split=0.2)
+
+def generate_job_embeddings(encoder, X):
+    """
+    Generate embeddings for all jobs in the dataset.
+    
+    Args:
+        encoder: Trained encoder model
+        X: Sparse feature matrix
+    
+    Returns:
+        embeddings: Dense matrix of job embeddings (n_jobs × embedding_dim)
+    """
+    print("\n" + "=" * 60)
+    print("STEP 3: INFERENCE SETUP")
+    print("=" * 60)
+    
+    print("\n[3.1] Generating embeddings for all jobs...")
+    X_dense = X.toarray().astype('float32')
+    embeddings = encoder.predict(X_dense, verbose=0)
+    
+    return embeddings
+
+
+def encode_user_sills_fuzzy(user_skills, skills_encoder, threshold=70):
+
+    known_skills = list(skills_encoder.classes_)
+    matched_skills = []
+    for skill in user_skills:
+        if skill in known_skills:
+            matched_skills.append(skill)
+        else:
+            match, score, _ = process.extractOne(
+                skill, known_skills, scorer=fuzz.WRatio
+            )
+            if score >= threshold:
+                matched_skills.append(match)
+            else:
+                print(f"No good matched skill for {skill}")
+    return skills_encoder.transform([matched_skills])
+
+def encode_user_input(user_description, user_skills, user_category, user_title, encoders):
+    """
+    Encode a user's job preferences into the same feature space as our training data.
+    
+    This is crucial: we must transform user input EXACTLY the same way we
+    transformed the training data, using the SAME fitted encoders.
+    
+    Args:
+        user_description: Text describing desired job (string)
+        user_skills: List of skills the user has (list of strings)
+        user_category: Preferred job category (string)
+        encoders: Dictionary of fitted encoders from preprocessing
+    
+    Returns:
+        X_user: Encoded feature vector for the user (sparse matrix)
+    """
+    # Encode description using the SAME TF-IDF vectorizer
+    # transform() uses vocabulary learned during fit()
+    X_desc = encoders['description'].transform([user_description])
+    
+    # Encode skills using the SAME MultiLabelBinarizer
+    # Unknown skills are simply ignored (not in the learned vocabulary)
+    X_skills = encode_user_sills_fuzzy(user_skills, encoders["skills"])
+    
+    # Encode category using the SAME OneHotEncoder
+    # Must be a DataFrame with the same column name
+    cat_df=pd.DataFrame({'category':[user_category]})
+    X_cat = encoders['category'].transform(cat_df)
+
+    
+    x_title = encoders['title'].transform([user_title])
+    
+    # Combine in the SAME order as training
+    X_user = scipy.sparse.hstack([X_desc, X_skills, X_cat, x_title])
+    
+    return X_user
+
+
+def recommend_jobs(user_description, user_skills, user_category, user_title, 
+                   encoder, encoders, job_embeddings, df, top_n=5):
+    """
+    Recommend jobs based on user input.
+    
+    Process:
+    1. Encode user input into feature vector
+    2. Pass through encoder to get user's embedding
+    3. Compute cosine similarity with all job embeddings
+    4. Return top N most similar jobs
+    
+    Args:
+        user_description: What kind of job the user wants
+        user_skills: Skills the user has
+        user_category: Preferred category
+        encoder: Trained encoder model
+        encoders: Dictionary of fitted encoders
+        job_embeddings: Pre-computed embeddings for all jobs
+        df: Original dataframe with job details
+        top_n: Number of recommendations to return
+    
+    Returns:
+        recommendations: DataFrame with top job matches and similarity scores
+    """
+    
+    # Step 1: Encode user input
+    X_user = encode_user_input(user_description, user_skills, user_category, user_title, encoders)
+    
+    # Step 2: Generate user embedding
+    X_user_dense = X_user.toarray().astype('float32')
+    user_embedding = encoder.predict(X_user_dense, verbose=0)
+    
+    # Step 3: Compute similarity with all jobs
+    # Cosine similarity: 1 = identical, 0 = orthogonal, -1 = opposite
+    similarities = sklearn.metrics.pairwise.cosine_similarity(job_embeddings, user_embedding)[0]
+    
+    # Step 4: Get top N indices
+    top_indices = similarities.argsort()[::-1][:top_n]
+    
+    # Build recommendations DataFrame
+    recommendations = df.iloc[top_indices][['job_title', 'category', 'job_description']].copy()
+    recommendations['similarity_score'] = similarities[top_indices]
+    recommendations['job_description'] = recommendations['job_description'].str[:200] + '...'
+    
+    return recommendations
+
+
+autoencoder, encoder, history =train_autoencoder(x,epochs=50,batch_size=32,validation_split=0.2)
+job_embeddings=generate_job_embeddings(encoder,x)
+
+test_description="I want to sell stuff"
+test_skills=['communications','techonlogical','savvy','smart','helpful','6 yrs','20 yrs']
+test_category="SALES"
+test_title="Salesman"
+
+reccs=recommend_jobs(
+    test_description,
+    test_skills,
+    test_category,
+    test_title,
+    encoder,
+    encoders,
+    job_embeddings,
+    df,
+    top_n=5
+)
+
+for idx, row in reccs.iterrows():
+    print(f"\n{row['job_title']}")
+    print(f"    Category: {row['category']}")
+    print(f"    Similarity: {row['similarity_score']:.4f}")
+    print(f"    Description: {row['job_description'][:100]}...")
