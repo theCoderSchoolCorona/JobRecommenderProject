@@ -4,32 +4,27 @@ import ast
 import scipy
 import keras
 
-df = pd.read_csv("job-skills.csv")
+df1 = pd.read_csv("job-skills.csv")
 df2 = pd.read_csv("kaggle_merged_clean.csv")
 
-print(df2.head())
-print(df2.columns)
-
-df2_columns = ["job_link","title", "summary"]
+df_x = pd.concat([df1, df2], ignore_index=True)
+df_x["job_skill_set"] = df_x['job_skill_set'].fillna("[""]")
+df=df_x.fillna("")
 
 job_description_encoder = sklearn.feature_extraction.text.TfidfVectorizer()
 jobDescription = job_description_encoder.fit_transform(df['job_description'])
 
 job_summary_encoder = sklearn.feature_extraction.text.TfidfVectorizer()
-jobSummary = job_summary_encoder.fit_transform(df2['summary'])
+jobSummary = job_summary_encoder.fit_transform(df['summary'])
 
 job_title_encoder = sklearn.feature_extraction.text.TfidfVectorizer()
-jobTitle = job_summary_encoder.fit_transform(df2['title'])
+jobTitle = job_title_encoder.fit_transform(df['title'])
 
 job_skill_set_encoder = sklearn.preprocessing.MultiLabelBinarizer()
 jobSkillset = job_skill_set_encoder.fit_transform(df['job_skill_set'].apply(ast.literal_eval))
 
 job_category_encoder = sklearn.preprocessing.OneHotEncoder(sparse_output=False)
 jobCategory = job_category_encoder.fit_transform(df[['category']])
-
-job_title_encoder = sklearn.feature_extraction.text.TfidfVectorizer()
-y = job_title_encoder.fit_transform(df['job_title'])
-print(y)
 
 x = scipy.sparse.hstack([jobDescription, jobSkillset, jobCategory, jobTitle, jobSummary])
 
@@ -42,12 +37,6 @@ encoders = {
     'summary': job_summary_encoder,
     
 }
-
-x_train, x_test, y_train, y_test = sklearn.model_selection.train_test_split(x, y, test_size=0.2, random_state = 11)
-print(f"=====x_train here:========== \n{x_train[0]}")
-print(f"=====y_train here:========== \n{y_train[0]}")
-print(x.shape[0])
-print(x.getnnz())
 
 
 def build_autoencoder(input_dim, embedding_dim=128):
@@ -165,7 +154,7 @@ def train_autoencoder(X, epochs=100, batch_size=32, validation_split=0.2):
     autoencoder, encoder = build_autoencoder(X_dense.shape[1])
     
     print("\n[2.2] Compiling model...")
-    autoencoder.???(
+    autoencoder.compile(
         optimizer=keras.optimizers.Adam(learning_rate=0.001),
         loss='mse',  # Mean Squared Error: penalizes reconstruction errors
         metrics=['mae']  # Mean Absolute Error: easier to interpret
@@ -190,13 +179,15 @@ def train_autoencoder(X, epochs=100, batch_size=32, validation_split=0.2):
         )
     ]
     
-    history = autoencoder.???(
-        ???, ???,  # Input and target are the same!
-        ???=???,
-        batch_size=???,
-        validation_split=???,
+    history = autoencoder.fit(
+        X_dense, X_dense,  # Input and target are the same!
+        epochs=epochs,
+        batch_size=batch_size,
+        validation_split=validation_split,
         callbacks=callbacks,
         verbose=1
     )
 
     return autoencoder, encoder, history
+
+train_autoencoder(x,epochs=100,batch_size=32,validation_split=0.2)
