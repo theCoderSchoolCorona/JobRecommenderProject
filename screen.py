@@ -1,4 +1,5 @@
 import tkinter as tk
+from tkinter import ttk
 from inf import recommend_jobs
 import re
 
@@ -21,8 +22,14 @@ class Screen :
         self.Entry1.grid(row=0, column=1)
 
         self.Label2 = tk.Label(root, text='Category').grid(row=1)
-        self.Entry2 = tk.Entry(root)
-        self.Entry2.grid(row=1, column=1)
+        categories = self.encoders["category"].categories_[0]
+        self.combo_box = ttk.Combobox(root, values=['BUSINESS-DEVELOPMENT', 'FINANCE', 'HR', 'INFORMATION-TECHNOLOGY', 'SALES'])
+        self.combo_box.grid(row=1, column=1)
+        self.combo_box.set(categories[0])
+        self.combo_box.bind("<<ComboboxSelected>>")#, self.select)
+
+        # self.Entry2 = tk.Entry(root)
+        # self.Entry2.grid(row=1, column=1)
 
         self.Label3 = tk.Label(root, text='Skills').grid(row=2)
         self.Entry3 = tk.Entry(root)
@@ -45,12 +52,13 @@ class Screen :
 
         self.label3_var = tk.StringVar()
         self.label3_var.set("")
-        self.label3 = tk.Label(root, textvariable=self.label4_var).grid(row=7)
-
+        self.label3 = tk.Label(root, textvariable=self.label3_var).grid(row=7)
         root.mainloop()
+
+
     def show_input(self):
         user_Job_Title = self.Entry1.get()
-        user_Category = self.Entry2.get().upper()
+        user_Category = self.combo_box.get().upper()
         user_Skills = self.Entry3.get().strip()
         user_Description = self.Entry4.get()
 
@@ -61,7 +69,7 @@ class Screen :
         # self.label2_var.set(user_Category)
         # self.label3_var.set(user_Skills)
         # self.label4_var.set(user_Description)
-        reccs=recommend_jobs(user_Description,user_Skills,user_Category,user_Job_Title, self.encoder, self.encoders, self.job_embeddings, self.df, top_n=1)
+        reccs=recommend_jobs(user_Description,user_Skills,user_Category,user_Job_Title, self.encoder, self.encoders, self.job_embeddings, self.df, top_n=1).reset_index()
         for idx, row in reccs.iterrows():
             getattr(self, f'label{idx+1}_var').set(f"{row["category"]}: {row["job_title"]} \n {row["job_description"][:100]}")
         # user_Job_Title=reccs['job_title']
@@ -72,6 +80,11 @@ class Screen :
         # self.label2_var.set(user_Category) 
         # self.label3_var.set(user_Description)
 
-        
+    # def select(self, event):
+    #     selected_item = self.combo_box.get()
+    #     self.Label2.config(text=selected_item)
+    
+    
+
 
     
