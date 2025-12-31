@@ -4,6 +4,9 @@ import ast
 import scipy
 import keras
 from rapidfuzz import process, fuzz
+import pickle
+import numpy
+import os
 
 df = pd.read_csv("job-skills.csv")
 # df2 = pd.read_csv("kaggle_merged_clean.csv")
@@ -302,7 +305,7 @@ def recommend_jobs(user_description, user_skills, user_category, user_title,
     
     # Step 3: Compute similarity with all jobs
     # Cosine similarity: 1 = identical, 0 = orthogonal, -1 = opposite
-    similarities = sklearn.metrics.pairwise.cosine_similarity(job_embeddings, user_embedding)[0]
+    similarities = sklearn.metrics.pairwise.cosine_similarity(user_embedding, job_embeddings)[0]
     
     # Step 4: Get top N indices
     top_indices = similarities.argsort()[::-1][:top_n]
@@ -315,12 +318,39 @@ def recommend_jobs(user_description, user_skills, user_category, user_title,
     return recommendations
 
 
-autoencoder, encoder, history =train_autoencoder(x,epochs=50,batch_size=32,validation_split=0.2)
-job_embeddings=generate_job_embeddings(encoder,x)
+def save_model():
+    os.makedirs("save_dir", exist_ok=True)
+    encoder.save(f"{"save_dir"}/encoder.keras")
+    with open("save_dir/encoders.pkl","wb") as f:
+        pickle.dump(encoders,f) 
+    numpy.save("save_dir/job_embeddings.npy", job_embeddings)
+    df.to_pickle("save_dir/jobs_df.pkl")
+    print("save model")
+
+def load_model():
+    encoder=keras.models.load_model("save_dir/encoder.keras")
+    with open("save_dir/encoders.pkl","rb") as f:
+        encoders=pickle.load(f)
+    job_embeddings=numpy.load("save_dir/job_embeddings.npy")
+    df =pd.read_pickle("save_dir/jobs_df.pkl")
+    print("loaded")
+    return encoder, encoders, job_embeddings, df
+
+
+if not os.path.exists("save_dir"):
+    autoencoder, encoder, history =train_autoencoder(x,epochs=50,batch_size=32,validation_split=0.2)
+    job_embeddings=generate_job_embeddings(encoder,x)
+    save_model()
+else:
+    encoder,encoders,job_embeddings,df= load_model()
+
+
+
+
 
 test_description="I want to sell stuff"
 test_skills=['communications','techonlogical','savvy','smart','helpful','6 yrs','20 yrs']
-test_category="SAL       22ES"
+test_category="SALES"
 test_title="Salesman"
 
 reccs=recommend_jobs(
