@@ -1,13 +1,18 @@
 import tkinter as tk
-
+from inf import recommend_jobs
 class Screen :
-    def __init__(self):
+    def __init__(self, encoder, encoders, job_embeddings, df):
         root = tk.Tk()
 
         root.title("Job Recommender")
         root.geometry("500x500")
         # label = tk.Label(root, text="Hello world", font=("Hello world", 16))
         # label.pack(pady=50)
+        self.encoder=encoder
+        self.encoders=encoders
+        self.job_embeddings=job_embeddings
+        self.df=df
+
 
         self.Label1 = tk.Label(root, text='Job Title').grid(row=0)
         self.Entry1 = tk.Entry(root)
@@ -59,5 +64,4 @@ class Screen :
         self.label2_var.set(user_Category)
         self.label3_var.set(user_Skills)
         self.label4_var.set(user_Description)
-
-Screen()
+        print(recommend_jobs(user_Description,user_Skills,user_Category,user_Job_Title, self.encoder, self.encoders, self.job_embeddings, self.df, top_n=5))

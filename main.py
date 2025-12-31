@@ -13,6 +13,6 @@ if not os.path.exists("save_dir"):
 else:
     encoder,encoders,job_embeddings,df= load_model()
 
-Screen()
+Screen(encoder, encoders, job_embeddings,df)
 
 print(recommend_jobs(Screen.Entry4.get(),Screen.Entry3.get(),Screen.Entry2.get(),Screen.Entry1.get(), encoder, encoders, job_embeddings, df, top_n=5))
