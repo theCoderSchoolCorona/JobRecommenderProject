@@ -320,7 +320,7 @@ job_embeddings=generate_job_embeddings(encoder,x)
 
 test_description="I want to sell stuff"
 test_skills=['communications','techonlogical','savvy','smart','helpful','6 yrs','20 yrs']
-test_category="SALES"
+test_category="SAL       22ES"
 test_title="Salesman"
 
 reccs=recommend_jobs(
