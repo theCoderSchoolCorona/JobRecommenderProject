@@ -55,10 +55,10 @@ class Screen :
     def show_input(self):
         user_Job_Title = self.Entry1.get()
         user_Category = self.Entry2.get().upper()
-        user_Skills = self.Entry3.get().strip().split()
+        user_Skills = self.Entry3.get().strip()
         user_Description = self.Entry4.get()
 
-        patterns = r"[ ,;:|/-_=+]"
+        patterns = r"[,;]"
         user_Skills = re.split(patterns, user_Skills)
 
         self.label1_var.set(user_Job_Title)
@@ -66,5 +66,7 @@ class Screen :
         self.label3_var.set(user_Skills)
         self.label4_var.set(user_Description)
         print(recommend_jobs(user_Description,user_Skills,user_Category,user_Job_Title, self.encoder, self.encoders, self.job_embeddings, self.df, top_n=5))
+
+        
 
     

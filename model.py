@@ -224,6 +224,11 @@ def save_model(encoder, encoders, df, job_embeddings):
     print("save model")
 
 
+# for idx, row in reccs.iterrows():
+#     print(f"\n{row['job_title']}")
+#     print(f"    Category: {row['category']}")
+#     print(f"    Similarity: {row['similarity_score']:.4f}")
+#     print(f"    Description: {row['job_description'][:100]}...")
 
 
 
