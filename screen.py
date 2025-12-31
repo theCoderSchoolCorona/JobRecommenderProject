@@ -36,20 +36,16 @@ class Screen :
         self.button.grid(row=4, column=1)
 
         self.label1_var = tk.StringVar()
-        self.label1_var.set("Job title")
+        self.label1_var.set("")
         self.label1 = tk.Label(root, textvariable=self.label1_var).grid(row=5)
 
         self.label2_var = tk.StringVar()
-        self.label2_var.set("Category")
+        self.label2_var.set("")
         self.label2 = tk.Label(root, textvariable=self.label2_var).grid(row=6)
 
         self.label3_var = tk.StringVar()
-        self.label3_var.set("Skills")
-        self.label3 = tk.Label(root, textvariable=self.label3_var).grid(row=7)
-
-        self.label4_var = tk.StringVar()
-        self.label4_var.set("Description")
-        self.label4 = tk.Label(root, textvariable=self.label4_var).grid(row=8)
+        self.label3_var.set("")
+        self.label3 = tk.Label(root, textvariable=self.label4_var).grid(row=7)
 
         root.mainloop()
     def show_input(self):
@@ -61,11 +57,20 @@ class Screen :
         patterns = r"[,;]"
         user_Skills = re.split(patterns, user_Skills)
 
-        self.label1_var.set(user_Job_Title)
-        self.label2_var.set(user_Category)
-        self.label3_var.set(user_Skills)
-        self.label4_var.set(user_Description)
-        print(recommend_jobs(user_Description,user_Skills,user_Category,user_Job_Title, self.encoder, self.encoders, self.job_embeddings, self.df, top_n=5))
+        # self.label1_var.set(user_Job_Title)
+        # self.label2_var.set(user_Category)
+        # self.label3_var.set(user_Skills)
+        # self.label4_var.set(user_Description)
+        reccs=recommend_jobs(user_Description,user_Skills,user_Category,user_Job_Title, self.encoder, self.encoders, self.job_embeddings, self.df, top_n=1)
+        for idx, row in reccs.iterrows():
+            getattr(self, f'label{idx+1}_var').set(f"{row["category"]}: {row["job_title"]} \n {row["job_description"][:100]}")
+        # user_Job_Title=reccs['job_title']
+        # user_Category=reccs['category']
+        # user_Description=reccs['job_description']
+
+        # self.label1_var.set(user_Job_Title)
+        # self.label2_var.set(user_Category) 
+        # self.label3_var.set(user_Description)
 
         
 
