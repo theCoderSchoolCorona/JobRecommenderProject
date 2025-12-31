@@ -214,7 +214,7 @@ def generate_job_embeddings(encoder, X):
     return embeddings
 
 
-def save_model():
+def save_model(encoder, encoders, df, job_embeddings):
     os.makedirs("save_dir", exist_ok=True)
     encoder.save(f"{"save_dir"}/encoder.keras")
     with open("save_dir/encoders.pkl","wb") as f:
@@ -226,10 +226,5 @@ def save_model():
 
 
 
-if not os.path.exists("save_dir"):
-    autoencoder, encoder, history =train_autoencoder(x,epochs=50,batch_size=32,validation_split=0.2)
-    job_embeddings=generate_job_embeddings(encoder,x)
-    save_model()
-else:
-    encoder,encoders,job_embeddings,df= load_model()
+
 
