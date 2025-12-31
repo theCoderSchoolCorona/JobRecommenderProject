@@ -16,8 +16,8 @@ def load_model():
     print("loaded")
     return encoder, encoders, job_embeddings, df
 
-def encode_user_sills_fuzzy(user_skills, skills_encoder, threshold=70):
-
+def encode_user_sills_fuzzy(user_skills, skills_encoder, threshold=80):
+    print(user_skills)
     known_skills = list(skills_encoder.classes_)
     matched_skills = []
     for skill in user_skills:
@@ -31,6 +31,7 @@ def encode_user_sills_fuzzy(user_skills, skills_encoder, threshold=70):
                 matched_skills.append(match)
             else:
                 print(f"No good matched skill for {skill}")
+    print(matched_skills)
     return skills_encoder.transform([matched_skills])
 
 def encode_user_input(user_description, user_skills, user_category, user_title, encoders):

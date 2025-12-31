@@ -1,5 +1,7 @@
 import tkinter as tk
 from inf import recommend_jobs
+import re
+
 class Screen :
     def __init__(self, encoder, encoders, job_embeddings, df):
         root = tk.Tk()
@@ -52,16 +54,17 @@ class Screen :
         root.mainloop()
     def show_input(self):
         user_Job_Title = self.Entry1.get()
-        user_Category = self.Entry2.get()
-        user_Skills = self.Entry3.get()
+        user_Category = self.Entry2.get().upper()
+        user_Skills = self.Entry3.get().strip().split()
         user_Description = self.Entry4.get()
-        print(user_Job_Title)
-        print(user_Category)
-        print(user_Skills)
-        print(user_Description)
+
+        patterns = r"[ ,;:|/-_=+]"
+        user_Skills = re.split(patterns, user_Skills)
 
         self.label1_var.set(user_Job_Title)
         self.label2_var.set(user_Category)
         self.label3_var.set(user_Skills)
         self.label4_var.set(user_Description)
         print(recommend_jobs(user_Description,user_Skills,user_Category,user_Job_Title, self.encoder, self.encoders, self.job_embeddings, self.df, top_n=5))
+
+    
