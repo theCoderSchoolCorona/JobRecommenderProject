@@ -75,13 +75,14 @@ def encode_user_input(user_description, user_skills, user_category, user_title, 
 def recommend_jobs(user_description, user_skills, user_category, user_title, 
                    encoder, encoders, job_embeddings, df, top_n=5):
     """
-    Recommend jobs based on user input.
+    Recommend jobs based on user input, with strict category matching.
     
     Process:
-    1. Encode user input into feature vector
-    2. Pass through encoder to get user's embedding
-    3. Compute cosine similarity with all job embeddings
-    4. Return top N most similar jobs
+    1. Filter to only jobs in the requested category
+    2. Encode user input into feature vector
+    3. Pass through encoder to get user's embedding
+    4. Compute cosine similarity with filtered job embeddings
+    5. Return top N most similar jobs
     
     Args:
         user_description: What kind of job the user wants
@@ -97,23 +98,44 @@ def recommend_jobs(user_description, user_skills, user_category, user_title,
         recommendations: DataFrame with top job matches and similarity scores
     """
     
-    # Step 1: Encode user input
+    # Step 1: Filter to only jobs in the requested category
+    # This ensures all recommendations match the user's category selection
+    category_mask = df['category'] == user_category
+    
+    # Use numpy.where to get POSITIONAL indices (0-based row numbers)
+    # This avoids issues with non-standard pandas index labels
+    filtered_positions = numpy.where(category_mask)[0]
+    filtered_embeddings = job_embeddings[filtered_positions]
+    
+    print(f"Filtered to {len(filtered_positions)} jobs in category: {user_category}")
+    
+    # Handle edge case: no jobs in this category
+    if len(filtered_positions) == 0:
+        print(f"Warning: No jobs found in category '{user_category}'")
+        return pd.DataFrame(columns=['job_title', 'category', 'job_description', 'similarity_score'])
+    
+    # Step 2: Encode user input
     X_user = encode_user_input(user_description, user_skills, user_category, user_title, encoders)
     
-    # Step 2: Generate user embedding
+    # Step 3: Generate user embedding
     X_user_dense = X_user.toarray().astype('float32')
     user_embedding = encoder.predict(X_user_dense, verbose=0)
     
-    # Step 3: Compute similarity with all jobs
+    # Step 4: Compute similarity with FILTERED jobs only
     # Cosine similarity: 1 = identical, 0 = orthogonal, -1 = opposite
-    similarities = sklearn.metrics.pairwise.cosine_similarity(user_embedding, job_embeddings)[0]
+    similarities = sklearn.metrics.pairwise.cosine_similarity(user_embedding, filtered_embeddings)[0]
     
-    # Step 4: Get top N indices
-    top_indices = similarities.argsort()[::-1][:top_n]
+    # Step 5: Get top N indices (within the filtered set)
+    # Limit top_n to the number of available jobs in this category
+    actual_top_n = min(top_n, len(filtered_positions))
+    top_local_indices = similarities.argsort()[::-1][:actual_top_n]
     
-    # Build recommendations DataFrame
-    recommendations = df.iloc[top_indices][['job_title', 'category', 'job_description']].copy()
-    recommendations['similarity_score'] = similarities[top_indices]
+    # Map back to original dataframe positions using numpy indexing
+    top_original_positions = filtered_positions[top_local_indices]
+    
+    # Build recommendations DataFrame using iloc (positional indexing)
+    recommendations = df.iloc[top_original_positions][['job_title', 'category', 'job_description']].copy()
+    recommendations['similarity_score'] = similarities[top_local_indices]
     recommendations['job_description'] = recommendations['job_description'].str[:200] + '...'
     
     return recommendations

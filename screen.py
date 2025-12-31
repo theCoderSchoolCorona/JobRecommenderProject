@@ -3,88 +3,116 @@ from tkinter import ttk
 from inf import recommend_jobs
 import re
 
-class Screen :
+class Screen:
     def __init__(self, encoder, encoders, job_embeddings, df):
         root = tk.Tk()
-
         root.title("Job Recommender")
-        root.geometry("500x500")
-        # label = tk.Label(root, text="Hello world", font=("Hello world", 16))
-        # label.pack(pady=50)
-        self.encoder=encoder
-        self.encoders=encoders
-        self.job_embeddings=job_embeddings
-        self.df=df
+        root.geometry("600x500")  # Slightly wider to accommodate results
+        
+        self.encoder = encoder
+        self.encoders = encoders
+        self.job_embeddings = job_embeddings
+        self.df = df
 
+        # --- Input Section ---
+        input_frame = tk.Frame(root, padx=10, pady=10)
+        input_frame.pack(fill='x')
 
-        self.Label1 = tk.Label(root, text='Job Title').grid(row=0)
-        self.Entry1 = tk.Entry(root)
-        self.Entry1.grid(row=0, column=1)
+        # Job Title
+        tk.Label(input_frame, text='Job Title').grid(row=0, column=0, sticky='e', padx=5, pady=2)
+        self.Entry1 = tk.Entry(input_frame, width=40)
+        self.Entry1.grid(row=0, column=1, sticky='w', pady=2)
 
-        self.Label2 = tk.Label(root, text='Category').grid(row=1)
-        categories = self.encoders["category"].categories_[0]
-        self.combo_box = ttk.Combobox(root, values=['BUSINESS-DEVELOPMENT', 'FINANCE', 'HR', 'INFORMATION-TECHNOLOGY', 'SALES'])
-        self.combo_box.grid(row=1, column=1)
-        self.combo_box.set(categories[0])
-        self.combo_box.bind("<<ComboboxSelected>>")#, self.select)
+        # Category - USE THE ACTUAL CATEGORIES FROM THE ENCODER
+        tk.Label(input_frame, text='Category').grid(row=1, column=0, sticky='e', padx=5, pady=2)
+        categories = list(self.encoders["category"].categories_[0])  # Get actual categories
+        self.combo_box = ttk.Combobox(input_frame, values=categories, width=37, state='readonly')
+        self.combo_box.grid(row=1, column=1, sticky='w', pady=2)
+        self.combo_box.set(categories[0])  # Default to first category
 
-        # self.Entry2 = tk.Entry(root)
-        # self.Entry2.grid(row=1, column=1)
+        # Skills
+        tk.Label(input_frame, text='Skills').grid(row=2, column=0, sticky='e', padx=5, pady=2)
+        self.Entry3 = tk.Entry(input_frame, width=40)
+        self.Entry3.grid(row=2, column=1, sticky='w', pady=2)
 
-        self.Label3 = tk.Label(root, text='Skills').grid(row=2)
-        self.Entry3 = tk.Entry(root)
-        self.Entry3.grid(row=2, column=1)
+        # Description
+        tk.Label(input_frame, text='Description').grid(row=3, column=0, sticky='e', padx=5, pady=2)
+        self.Entry4 = tk.Entry(input_frame, width=40)
+        self.Entry4.grid(row=3, column=1, sticky='w', pady=2)
 
-        self.Label4 = tk.Label(root, text='Description').grid(row=3)
-        self.Entry4 = tk.Entry(root)
-        self.Entry4.grid(row=3, column=1)
+        # Submit Button
+        self.button = tk.Button(input_frame, text='Get Recommendations', command=self.show_input)
+        self.button.grid(row=4, column=1, sticky='w', pady=10)
 
-        self.button = tk.Button(root, text='enter', command=self.show_input)
-        self.button.grid(row=4, column=1)
+        # --- Results Section ---
+        results_frame = tk.Frame(root, padx=10, pady=10)
+        results_frame.pack(fill='both', expand=True)
 
-        self.label1_var = tk.StringVar()
-        self.label1_var.set("")
-        self.label1 = tk.Label(root, textvariable=self.label1_var).grid(row=5)
+        tk.Label(results_frame, text="Recommendations:", font=('Arial', 10, 'bold')).pack(anchor='w')
 
-        self.label2_var = tk.StringVar()
-        self.label2_var.set("")
-        self.label2 = tk.Label(root, textvariable=self.label2_var).grid(row=6)
+        # Create result labels with proper wrapping
+        self.label_vars = []
+        self.labels = []
+        
+        for i in range(3):
+            var = tk.StringVar()
+            var.set("")
+            self.label_vars.append(var)
+            
+            # Frame for each result (adds visual separation)
+            result_frame = tk.Frame(results_frame, relief='groove', borderwidth=1, padx=5, pady=5)
+            result_frame.pack(fill='x', pady=5)
+            
+            # Label with wraplength for proper text wrapping
+            label = tk.Label(
+                result_frame, 
+                textvariable=var, 
+                wraplength=550,  # Wrap text at this width
+                justify='left',
+                anchor='w'
+            )
+            label.pack(fill='x')
+            self.labels.append(label)
 
-        self.label3_var = tk.StringVar()
-        self.label3_var.set("")
-        self.label3 = tk.Label(root, textvariable=self.label3_var).grid(row=7)
+        # Keep references for backward compatibility with getattr approach
+        self.label1_var = self.label_vars[0]
+        self.label2_var = self.label_vars[1]
+        self.label3_var = self.label_vars[2]
+
         root.mainloop()
-
 
     def show_input(self):
         user_Job_Title = self.Entry1.get()
-        user_Category = self.combo_box.get().upper()
+        user_Category = self.combo_box.get()  # No need for .upper(), already correct format
         user_Skills = self.Entry3.get().strip()
         user_Description = self.Entry4.get()
 
+        # Split skills by comma or semicolon
         patterns = r"[,;]"
-        user_Skills = re.split(patterns, user_Skills)
+        user_Skills = [s.strip() for s in re.split(patterns, user_Skills) if s.strip()]
 
-        # self.label1_var.set(user_Job_Title)
-        # self.label2_var.set(user_Category)
-        # self.label3_var.set(user_Skills)
-        # self.label4_var.set(user_Description)
-        reccs=recommend_jobs(user_Description,user_Skills,user_Category,user_Job_Title, self.encoder, self.encoders, self.job_embeddings, self.df, top_n=1).reset_index()
+
+        reccs = recommend_jobs(
+            user_Description,
+            user_Skills,
+            user_Category,
+            user_Job_Title,
+            self.encoder,
+            self.encoders,
+            self.job_embeddings,
+            self.df,
+            top_n=3
+        ).reset_index()
+
+        # Update result labels
         for idx, row in reccs.iterrows():
-            getattr(self, f'label{idx+1}_var').set(f"{row["category"]}: {row["job_title"]} \n {row["job_description"][:100]}")
-        # user_Job_Title=reccs['job_title']
-        # user_Category=reccs['category']
-        # user_Description=reccs['job_description']
+            result_text = (
+                f"{row['category']}: {row['job_title']}\n"
+                f"Similarity: {row['similarity_score']:.2%}\n"
+                f"{row['job_description'][:150]}..."
+            )
+            self.label_vars[idx].set(result_text)
 
-        # self.label1_var.set(user_Job_Title)
-        # self.label2_var.set(user_Category) 
-        # self.label3_var.set(user_Description)
-
-    # def select(self, event):
-    #     selected_item = self.combo_box.get()
-    #     self.Label2.config(text=selected_item)
-    
-    
-
-
-    
+    def select(self, event):
+        selected_item = self.combo_box.get()
+        self.combo_box.set(selected_item)
