@@ -1,0 +1,6 @@
+keras
+pandas
+scikit-learn
+numpy
+rapidfuzz
+pickle
